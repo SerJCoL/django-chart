@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app
+  namespace: django-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: django-app
+  template:
+    metadata:
+      labels:
+        app: django-app
+    spec:
+      containers:
+        - name: django-app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 3003
+          command: ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:3003"]
+          envFrom:
+            - configMapRef:
+                name: django-config
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-app
+  namespace: django-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-app
+  template:
+    metadata:
+      labels:
+        app: postgres-app
+    spec:
+      containers:
+        - name: postgresql
+          image: "postgres:13-alpine"
+          env:
+            - name: POSTGRES_DB
+              value: "tutorial-dev"
+            - name: POSTGRES_USER
+              value: "vinhle"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: tutorial-volume
+      volumes:
+        - name: tutorial-volume
+          persistentVolumeClaim:
+            claimName: postgres-pvc
